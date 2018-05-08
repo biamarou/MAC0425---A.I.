@@ -15,6 +15,7 @@
 from util import manhattanDistance
 from game import Directions
 import random, util
+import math
 
 from game import Agent
 
@@ -113,21 +114,44 @@ class MinimaxAgent(MultiAgentSearchAgent):
     def getAction_recursive(self, gameState, agent, depth, nbAgent):
     	
     	if (agent):
+    		
+    		if (depth == 0):
+    			return self.evaluationFunction(gameState)
+
     		pacman_actions = gameState.getLegalActions(0)
+    		cost_actions = []
+    		
 
     		for a in pacman_actions:
     			next_state = gameState.generateSuccessor(0, a)
-    			getAction_recursive(next_state, False, depth, nbAgent)
+    			cost_actions.append([a, self.getAction_recursive(next_state, False, depth, nbAgent)])
+
+    		big = [0, -float('inf')]
+    		
+    		for cost in cost_actions:
+    			if (cost[1] > big[1]):
+    				big = cost
+    		    		
+    		return big[0]
+
     	else:
+
     		if (nbAgent == 0):
-    			getAction_recursive(gameState, True, depth - 1, gameState.getNumAgents() - 1)
+    			return self.getAction_recursive(gameState, True, depth - 1, gameState.getNumAgents() - 1)
 
     		else:
     			ghost_actions = gameState.getLegalActions(nbAgent)
+    			
+    			if (not ghost_actions):
+    				return self.getAction_recursive(gameState, False, depth, nbAgent - 1)
+
+    			cost_actions = util.PriorityQueue()
 
     			for a in ghost_actions:
     				next_state = gameState.generateSuccessor(nbAgent, a)
-    				getAction_recursive(next_state, False, depth, nbAgent)
+    				cost_actions.push(a, self.getAction_recursive(next_state, False, depth, nbAgent - 1))
+
+    			return cost_actions.pop()
 
 
 
@@ -148,12 +172,9 @@ class MinimaxAgent(MultiAgentSearchAgent):
           gameState.getNumAgents():
             Returns the total number of agents in the game
         """       	
+        nbAgent = gameState.getNumAgents()
 
-
-       	
-       	print(gameState.generateSuccessor(0, agAction[0]))
-
-       	return (agAction[0])
+        return self.getAction_recursive(gameState, True, self.depth, nbAgent)
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
