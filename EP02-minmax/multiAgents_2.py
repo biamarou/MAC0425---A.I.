@@ -15,7 +15,7 @@
 from util import manhattanDistance
 from game import Directions
 import random, util
-import math
+import math as th
 
 from game import Agent
 
@@ -68,14 +68,38 @@ class ReflexAgent(Agent):
         to create a masterful evaluation function.
         """
         # Useful information you can extract from a GameState (pacman.py)
-        successorGameState = currentGameState.generatePacmanSuccessor(action)
-        newPos = successorGameState.getPacmanPosition()
-        newFood = successorGameState.getFood()
-        newGhostStates = successorGameState.getGhostStates()
-        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+        
+        currentFood = currentGameState.getFood().asList()
 
-        "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        successorGameState = currentGameState.generatePacmanSuccessor(action)
+        successorGameState.getNumFood()
+        
+        newPos = successorGameState.getPacmanPosition()
+        newGhostStates = successorGameState.getGhostStates()
+        newFood = successorGameState.getFood().asList()
+        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+        
+        if (successorGameState.isWin()):
+            evaluation = float('inf')
+        
+        else:
+        
+            allGhostDistances = 0
+
+            for g in newGhostStates:
+                g = g.getPosition()
+                ghostDistance = th.sqrt((newPos[0] - g[0])**2 + (newPos[1] - g[1])**2)
+                allGhostDistances += ghostDistance
+
+            allFoodDistances = 0
+            
+            for f in newFood:
+                foodDistance = th.sqrt((newPos[0] - f[0])**2 + (newPos[1] - f[1])**2)
+                allFoodDistances += foodDistance
+        
+            evaluation = th.log(allGhostDistances) + 1/(allFoodDistances)
+        
+        return evaluation
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -125,12 +149,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
         for a in nextActions:
             s = gameState.generateSuccessor(agent, a)
-
             c = self.costAction(s, depth, 1, call + 1)
-            
-            if (call == 0):
-                print ("cost")
-                print c
             
             if (v < c):
                 v = c
@@ -138,6 +157,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         
         if (call == 0): 
             return nextAction
+
         elif (nextAction == None):
             v = self.evaluationFunction(gameState)
         
@@ -201,17 +221,132 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       Your minimax agent with alpha-beta pruning (question 3)
     """
 
+    def maxAction(self, gameState, alfa, beta, depth, agent, call):
+        
+        v = -float('inf')
+        nextActions = gameState.getLegalActions(agent)
+        nextAction = None
+
+        for a in nextActions:
+            s = gameState.generateSuccessor(agent, a)
+            c = self.costAction(s, alfa, beta, depth, 1, call + 1)
+            
+            if (v < c):
+                v = c
+                nextAction = a
+
+            if (v > beta): return v
+            alfa = max(alfa, v)
+        
+        if (call == 0): 
+            return nextAction
+
+        elif (nextAction == None):
+            v = self.evaluationFunction(gameState)
+        
+        return v
+
+    def minAction(self, gameState, alfa, beta, depth, agent, call):
+
+        v = float('inf')
+        nextActions = gameState.getLegalActions(agent)
+        nbAgent = gameState.getNumAgents()
+
+        for a in nextActions:
+            s = gameState.generateSuccessor(agent, a)
+            
+            if (agent == nbAgent - 1):
+                c = self.costAction(s, alfa, beta, depth - 1, 0, call + 1)
+            else:
+                c = self.costAction(s, alfa, beta, depth, agent + 1, call + 1)
+    
+            if (v > c):
+                v = c
+            
+            if (v < alfa): return v
+            beta = min(beta, v)
+
+        if (not nextActions):
+            v = self.evaluationFunction(gameState)
+        
+        return v
+
+    def costAction(self, gameState, alfa, beta, depth, agent, call):
+        
+        if (depth == 0):
+            return self.evaluationFunction(gameState)
+        
+        if (agent == 0):
+            return self.maxAction(gameState, alfa, beta, depth, agent, call)
+
+        else:
+            return self.minAction(gameState, alfa, beta, depth, agent, call)
+
+
     def getAction(self, gameState):
         """
           Returns the minimax action using self.depth and self.evaluationFunction
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.costAction(gameState, -float('inf'), float('inf'), self.depth, 0, 0)
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
       Your expectimax agent (question 4)
     """
+
+    def maxAction(self, gameState, depth, agent, call):
+        
+        v = -float('inf')
+        nextActions = gameState.getLegalActions(agent)
+        nextAction = None
+
+        for a in nextActions:
+            s = gameState.generateSuccessor(agent, a)
+            c = self.costAction(s, depth, 1, call + 1)
+            
+            if (v < c):
+                v = c
+                nextAction = a
+        
+        if (call == 0): 
+            return nextAction
+
+        elif (nextAction == None):
+            v = self.evaluationFunction(gameState)
+        
+        return v
+
+    def expAction(self, gameState, depth, agent, call):
+
+        v = 0
+        nextActions = gameState.getLegalActions(agent)
+        nbAgent = gameState.getNumAgents()
+
+        for a in nextActions:
+            s = gameState.generateSuccessor(agent, a)
+            p = 1.0/float(len(nextActions))
+
+            
+            if (agent == nbAgent - 1):
+                c = self.costAction(s, depth - 1, 0, call + 1)
+            else:
+                c = self.costAction(s, depth, agent + 1, call + 1)
+    
+            v += p * float(c)
+        
+        return v
+
+    def costAction(self, gameState, depth, agent, call):
+        
+        if (depth == 0):
+            return self.evaluationFunction(gameState)
+        
+        if (agent == 0):
+            return self.maxAction(gameState, depth, agent, call)
+
+        else:
+            return self.expAction(gameState, depth, agent, call)
+
 
     def getAction(self, gameState):
         """
@@ -220,8 +355,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           All ghosts should be modeled as choosing uniformly at random from their
           legal moves.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.costAction(gameState, self.depth, 0, 0)
 
 def betterEvaluationFunction(currentGameState):
     """
