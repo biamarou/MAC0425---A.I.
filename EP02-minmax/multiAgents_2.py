@@ -49,7 +49,6 @@ class ReflexAgent(Agent):
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
 
         "Add more of your code here if you want to"
-
         return legalMoves[chosenIndex]
 
     def evaluationFunction(self, currentGameState, action):
@@ -68,37 +67,35 @@ class ReflexAgent(Agent):
         to create a masterful evaluation function.
         """
         # Useful information you can extract from a GameState (pacman.py)
-        
-        currentFood = currentGameState.getFood().asList()
 
         successorGameState = currentGameState.generatePacmanSuccessor(action)
-        successorGameState.getNumFood()
-        
+        numOldFood = currentGameState.getFood()
+        numOldFood = len(numOldFood.asList())
+
         newPos = successorGameState.getPacmanPosition()
         newGhostStates = successorGameState.getGhostStates()
-        newFood = successorGameState.getFood().asList()
+        newFood = successorGameState.getFood()
+        numNewFood = len(newFood.asList())
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
-        
+
         if (successorGameState.isWin()):
             evaluation = float('inf')
         
         else:
-        
-            allGhostDistances = 0
-
-            for g in newGhostStates:
-                g = g.getPosition()
-                ghostDistance = th.sqrt((newPos[0] - g[0])**2 + (newPos[1] - g[1])**2)
-                allGhostDistances += ghostDistance
-
-            allFoodDistances = 0
-            
-            for f in newFood:
-                foodDistance = th.sqrt((newPos[0] - f[0])**2 + (newPos[1] - f[1])**2)
-                allFoodDistances += foodDistance
-        
-            evaluation = th.log(allGhostDistances) + 1/(allFoodDistances)
-        
+            nearGhost = float('inf')
+            nearFood = float('inf')
+            if (newScaredTimes[0] == 0):           
+                for g in newGhostStates:
+                    p = g.getPosition()
+                    ghostDistance = float(abs(newPos[0] - p[0]) + abs(newPos[1] - p[1]))
+                    if (ghostDistance == 1 or ghostDistance == 0): nearGhost = -float('inf')
+                    if (ghostDistance < nearGhost): nearGhost = ghostDistance
+                        
+            for f in newFood.asList():
+                foodDistance = float(abs(newPos[0] - f[0]) + abs(newPos[1] - f[1]))
+                if (foodDistance < nearFood): nearFood = foodDistance
+                
+            evaluation = 0.01*nearGhost + 2.*1.0/nearFood + 2.1*(numOldFood - numNewFood)
         return evaluation
 
 def scoreEvaluationFunction(currentGameState):
@@ -364,9 +361,28 @@ def betterEvaluationFunction(currentGameState):
 
       DESCRIPTION: <write something here so we know what you did>
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    curPos = currentGameState.getPacmanPosition()
+    curGhostStates = currentGameState.getGhostStates()
+    curFood = currentGameState.getFood()
+    curScaredTimes = [ghostState.scaredTimer for ghostState in curGhostStates]
+
+    if (currentGameState.isWin()):
+            evaluation = float('inf')
+        
+    else:
+
+        score = 0
+                       
+        for g in curGhostStates:
+            p = g.getPosition()
+            ghostDistance = float(abs(curPos[0] - p[0]) + abs(curPos[1] - p[1]))
+                
+            if (ghostDistance == 0): score = -float('inf')
+            else: score += 4*ghostDistance
+
+        score += -16.*len(curFood.asList())        
+    
+    return score + currentGameState.getScore()
 
 # Abbreviation
 better = betterEvaluationFunction
-
